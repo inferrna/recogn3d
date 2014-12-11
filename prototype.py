@@ -14,14 +14,14 @@ class comparator():
         allfill = np.empty((sizey, sizex), np.int16)
         allfill.fill(maxd)
         self.diffs = np.zeros((9, sizey, sizex), np.int16)
-        self.diffs[0,0,:].fill(maxd)                                         #Top
-        self.diffs[2,:,0].fill(maxd)                                         #Left
-        self.diffs[1] = np.logical_or(self.diffs[0], self.diffs[2])*allfill #TopLeft
-        self.diffs[4,sizey-1,:].fill(maxd)                                   #Botom
-        self.diffs[3] = np.logical_or(self.diffs[2], self.diffs[4])*allfill #LeftBottom
-        self.diffs[6,:,sizex-1].fill(maxd)                                   #Right
-        self.diffs[5] = np.logical_or(self.diffs[4], self.diffs[6])*allfill #BottomRight
-        self.diffs[7] = np.logical_or(self.diffs[6], self.diffs[0])*allfill #RightTop
+        self.diffs[0,0,:].fill(maxd)                                         #0 Top
+        self.diffs[2,:,0].fill(maxd)                                         #2 Left
+        self.diffs[1] = np.logical_or(self.diffs[0], self.diffs[2])*allfill  #1 TopLeft
+        self.diffs[4,sizey-1,:].fill(maxd)                                   #4 Botom
+        self.diffs[3] = np.logical_or(self.diffs[2], self.diffs[4])*allfill  #3 LeftBottom
+        self.diffs[6,:,sizex-1].fill(maxd)                                   #6 Right
+        self.diffs[5] = np.logical_or(self.diffs[4], self.diffs[6])*allfill  #5 BottomRight
+        self.diffs[7] = np.logical_or(self.diffs[6], self.diffs[0])*allfill  #7 RightTop, 8 Center is full of zeroes
         self.dirs = np.array([[-1,0],    #0 Top
                               [-1, -1],  #1 TopLeft
                               [0, -1],   #2 Left
@@ -31,17 +31,27 @@ class comparator():
                               [0, 1],    #6 Right
                               [-1, 1],   #7 RightTop
                               [0, 0]],   #8 Center
-                              dtype=np.int16)+np.array([1, 1], dtype=np.int16)
+                              dtype=np.int16)
 
-    def compare(self, imgl, imgr):
-        diffs = np.copy(self.diffs)
+    def compare(self, imgl, imgr, offsets):
+        diffs = np.copy(self.diffs)#.reshape(self.diffs.shape+[2, 2])
         emptyright = np.copy(self.emptyright)
         emptyright[1:self.szy+1, 1:self.szx+1] = imgr
-        for i in range(0, len(self.dirs)):
-            dy, dx = self.dirs[i]
-            ey, ex = [self.szy+dy, self.szx+dx]
-            diffs[i] += abs(emptyright[dy:ey,dx:ex] - imgl)
-        #s[:,0,1].argmin()
+        dirs = self.dirs+np.array([1, 1], dtype=np.int16)
+        for i in range(0, len(dirs)):
+            dy, dx = dirs[i]                        #Tirections to shift (normalized)
+            ey, ex = [self.szy+dy, self.szx+dx]     #Ends
+            for gy in range(0, self.szy):
+                for gx in range(0, self.szx):
+                    ox, oy = offsets[gy, gx] #Previvious offsets (scaled)
+                    diffs[i, gy, gx] += abs(emptyright[dy:dy+gy,dx:dx+gx] - imgl[gy, gx]) #Needs changes
+        #sm = s.argmin(axis=0)          #To find best offset indexes
+        #offs = self.dirs[sm]+offsets   #Find new offsets and append the olds
+        ###To scale by nearest###
+        #s2[::2,::2,:] = s 
+        #s2[1::2] = s2[::2] 
+        #s2[:,1::2,:] = s2[:,::2,:] 
+
         return diffs
 
 dir1 = "screne/"
