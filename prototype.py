@@ -22,15 +22,15 @@ class comparator():
         self.diffs[6,:,sizex-1].fill(maxd)                                   #6 Right
         self.diffs[5] = np.logical_or(self.diffs[4], self.diffs[6])*allfill  #5 BottomRight
         self.diffs[7] = np.logical_or(self.diffs[6], self.diffs[0])*allfill  #7 RightTop, 8 Center is full of zeroes
-        self.dirs = np.array([[-1,0],    #0 Top
-                              [-1, -1],  #1 TopLeft
-                              [0, -1],   #2 Left
-                              [1, -1],   #3 LeftBottom
-                              [1, 0],    #4 Bottom
-                              [1, 1],    #5 BottomRight
-                              [0, 1],    #6 Right
-                              [-1, 1],   #7 RightTop
-                              [0, 0]],   #8 Center
+        self.dirs = np.array([[-1,  0],    #0 Top
+                              [-1, -1],    #1 TopLeft
+                              [ 0, -1],    #2 Left
+                              [ 1, -1],    #3 LeftBottom
+                              [ 1,  0],    #4 Bottom
+                              [ 1,  1],    #5 BottomRight
+                              [ 0,  1],    #6 Right
+                              [-1,  1],    #7 RightTop
+                              [ 0,  0]],   #8 Center
                               dtype=np.int16)
 
     def compare(self, imgl, imgr, offsets):
@@ -39,20 +39,25 @@ class comparator():
         emptyright[1:self.szy+1, 1:self.szx+1] = imgr
         dirs = self.dirs+np.array([1, 1], dtype=np.int16)
         for i in range(0, len(dirs)):
-            dy, dx = dirs[i]                        #Tirections to shift (normalized)
+            dy, dx = dirs[i]                        #Directions to shift (normalized)
             ey, ex = [self.szy+dy, self.szx+dx]     #Ends
             for gy in range(0, self.szy):
                 for gx in range(0, self.szx):
                     ox, oy = offsets[gy, gx] #Previvious offsets (scaled)
-                    diffs[i, gy, gx] += abs(emptyright[dy:dy+gy,dx:dx+gx] - imgl[gy, gx]) #Needs changes
-        #sm = s.argmin(axis=0)          #To find best offset indexes
-        #offs = self.dirs[sm]+offsets   #Find new offsets and append the olds
+                    #print "imgl[gy, gx] is", imgl[gy, gx]
+                    #print "emptyright[0,0] is", emptyright[0,0]
+                    #print "dy,(dy+gy+oy), dx,(dx+gx+ox) is", dy,(dy+gy+oy), dx,(dx+gx+ox)
+                    #print "emptyright[dy:(dy+gy+oy),dx:(dx+gx+ox)] is", emptyright[dy:(dy+gy+oy),dx:(dx+gx+ox)]
+                    #print "difference is", emptyright[dy:(dy+gy+oy),dx:(dx+gx+ox)] - imgl[gy, gx]
+                    diffs[i, gy, gx] += abs(emptyright[(dy+gy+oy),(dx+gx+ox)] - imgl[gy, gx]) #Needs changes
+        sm = diffs.argmin(axis=0)          #To find best offset indexes
+        offs = self.dirs[sm]+offsets   #Find new offsets and append the olds
         ###To scale by nearest###
         #s2[::2,::2,:] = s 
         #s2[1::2] = s2[::2] 
         #s2[:,1::2,:] = s2[:,::2,:] 
-
-        return diffs
+        print "------Diffs==\n", diffs
+        return offs.repeat(2,axis=0).repeat(2,axis=1)
 
 dir1 = "screne/"
 dir2 = "screne/resized/"
@@ -77,6 +82,7 @@ y = 1
 x = 1
 
 comparators = []
+offsets = np.zeros((2,2,2)).astype(np.int16)
 while x<oldx and y<oldy:
     x*=2
     y*=2
@@ -92,6 +98,6 @@ while x<oldx and y<oldy:
     #vis[:newy, newx:2*newx] = cv_img1rs
     #cv2.imwrite(dir2+'both'+szstr+ext, vis)
 
-    res = comparators[-1].compare(cv_img0rs, cv_img0rs)
-    print res
+    offsets = comparators[-1].compare(cv_img0rs, cv_img0rs, offsets)
+    print "----Offsets is\n", offsets
     exit()
