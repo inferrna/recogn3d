@@ -5,8 +5,24 @@ from PIL import Image, ImageDraw
 from math import log
 from random import randint
 
-#def blockslice(arr, sy, sx):
+#http://stackoverflow.com/questions/16856788/slice-2d-array-into-smaller-2d-arrays
+def blockslice(arr, ns=2):
 #u.transpose(1,0).reshape((2,2,4,)).transpose(0,2,1).reshape((2,2,2,2,))
+    """
+    Return an array of shape (n, nrows, ncols) where
+    n * nrows * ncols = arr.size
+
+    If arr is a 2D array, the returned array should look like n subblocks with
+    each subblock preserving the "physical" layout of arr.
+    """
+    h, w = arr.shape
+    nrows = ns
+    ncols = ns
+    return (arr.reshape(h//ns, nrows, -1, ncols)
+               .swapaxes(1,2)
+               .reshape(-1, nrows, ncols)
+               .reshape((h//ns,w//ns,ns,ns,))
+               .transpose(1,0,2,3))
 
 class comparator():
     def __init__(self, sizey, sizex, dtype):
