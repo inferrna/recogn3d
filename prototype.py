@@ -72,8 +72,9 @@ class comparator():
                     .transpose(2,0,1) #Transpose back
             diffs[i] += abs(emptyright[cmatr[0], cmatr[1]] - imgl)
 
+        #bu.sum(axis=2).sum(axis=2)         #Sum by blocks
         sm = diffs.argmin(axis=0)          #To find best offset indexes
-        offs = self.dirs[sm]+offsets   #Find new offsets and append the olds
+        offs = self.dirs[sm]+offsets       #Find new offsets and append the olds
         print "---Offsets indices==\n", sm
         ###To scale by nearest###
         #s2[::2,::2,:] = s 
