@@ -21,8 +21,8 @@ def blockslice(arr, ns=2):
     return (arr.reshape(h//ns, nrows, -1, ncols)
                .swapaxes(1,2)
                .reshape(-1, nrows, ncols)
-               .reshape((h//ns,w//ns,ns,ns,))
-               .transpose(1,0,2,3))
+               .reshape((h//ns,w//ns,ns,ns,)))
+               #.transpose(1,0,2,3))
 
 class comparator():
     def __init__(self, sizey, sizex, dtype):
@@ -56,7 +56,7 @@ class comparator():
                               dtype=np.int16)
         self.crds = np.indices((sizey,sizex,)).transpose(1,2,0)
 
-    def compare(self, imgl, imgr, offsets):
+    def compare(self, imgl, imgr, offsets, cmps=2):
         diffs = np.copy(self.diffs)#.reshape(self.diffs.shape+[2, 2])
         emptyright = np.copy(self.emptyright)
         sh = self.sh
@@ -74,23 +74,22 @@ class comparator():
                     .astype(np.int32)\
                     .transpose(2,0,1) #Transpose back
             diffs[i] += abs(emptyright[cmatr[0], cmatr[1]] - imgl)
-        cmps = 4
-        bld =  np.array([blockslice(x, cmps) for x in diffs], dtype=diffs.dtype)
-        sums = bld.sum(axis=3).sum(axis=3)         #Sum by blocks
-        sm =   sums.argmin(axis=0)\
+        bld =  np.array([blockslice(x, cmps) for x in diffs], dtype=diffs.dtype) #Split diff planes to slices by cmps*cmps
+        sums = bld.sum(axis=3).sum(axis=3)#.transpose(0,2,1)         #Sum by blocks
+        sumsavgs = (sums//(cmps*cmps)).repeat(cmps,axis=1).repeat(cmps,axis=2)
+        ndiffs = abs(diffs-sumsavgs)
+        nbld =  np.array([blockslice(x, cmps) for x in ndiffs], dtype=ndiffs.dtype)
+        nsums = nbld.sum(axis=3).sum(axis=3)
+        sm =   nsums.argmin(axis=0)\
                    .repeat(cmps,axis=0)\
                    .repeat(cmps,axis=1)            #To find best offset indexes
         offs = self.dirs[sm]+offsets               #Find new offsets and append the olds
         print "---Offsets indices==\n", sums.argmin(axis=0)
-        ###To scale by nearest###
-        #s2[::2,::2,:] = s 
-        #s2[1::2] = s2[::2] 
-        #s2[:,1::2,:] = s2[:,::2,:] 
-        print "------Diffs==\n", sums
+        print "------Diffs==\n", nsums
         return offs
 
 def vis_offsets(im0, im1, offsets):
-    scale = 8
+    scale = 4
     y, x = im0.shape
     newy, newx = y*scale, x*scale
     crdsfrom = np.indices(im0.shape).transpose(1,2,0) 
@@ -115,7 +114,7 @@ def vis_offsets(im0, im1, offsets):
     draw = ImageDraw.Draw(pil_im)
     for y in range(0, offsets.shape[0]):
         for x in range(0, offsets.shape[1]):
-            if sum(abs(offsets[y, x])) > 0 and randint(0, y)==0:
+            if sum(abs(offsets[y, x])) > 0 and randint(0, y>>2)==0:
                 coords = tuple(np.concatenate((crdsfrom[y,x][::-1], crdsto[y,x][::-1],)))
                 print "Draw to", coords 
                 draw.line(coords, fill=255, width=1)
@@ -144,12 +143,12 @@ oldy, oldx = cv_img0.shape
 newy = oldy//2
 newx = oldx//2
 
-y = 8
-x = 8
+y = 16
+x = 16
 
 comparators = []
 offs = np.zeros((y,x,2)).astype(np.int16)
-
+cmps = 4
 while x<oldx and y<oldy:
     x*=2
     y*=2
@@ -166,8 +165,8 @@ while x<oldx and y<oldy:
     #vis[:newy, newx:2*newx] = cv_img1rs
     #cv2.imwrite(dir2+'both'+szstr+ext, vis)
 
-    offs = comparators[-1].compare(cv_img0rs, cv_img1rs, offsets)
+    offs = comparators[-1].compare(cv_img0rs, cv_img1rs, offsets, cmps)
     print "----Offsets is\n", offs
-    if y>16:
+    if y>64:
         vis_offsets(cv_img0rs, cv_img1rs, offs)
         exit()
